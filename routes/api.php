@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LocalPrintJobController;
 use App\Http\Controllers\N8nAssistantController;
 use App\Http\Controllers\N8nCustomerController;
 use App\Http\Controllers\WhatsAppController;
@@ -9,6 +10,12 @@ use Illuminate\Support\Facades\Route;
 Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook'])
     ->withoutMiddleware('throttle:api')
     ->name('api.whatsapp.webhook');
+
+Route::prefix('local-printer')->group(function () {
+    Route::get('/jobs', [LocalPrintJobController::class, 'index']);
+    Route::post('/jobs/{job}/complete', [LocalPrintJobController::class, 'complete']);
+    Route::post('/jobs/{job}/fail', [LocalPrintJobController::class, 'fail']);
+});
 
 Route::prefix('n8n')->group(function () {
     Route::get('/menu', [N8nAssistantController::class, 'menu'])->name('api.n8n.menu');

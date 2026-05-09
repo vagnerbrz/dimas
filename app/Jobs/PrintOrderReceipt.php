@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\LocalPrintJob;
 use App\Models\Order;
 use App\Services\OrderReceiptPrinter;
 use Illuminate\Bus\Queueable;
@@ -32,6 +33,14 @@ class PrintOrderReceipt implements ShouldQueue
         }
 
         try {
+            if ($printer->isLocalConnection()) {
+                LocalPrintJob::createIfNotExists($order->id);
+                Log::info('Pedido adicionado a fila de impressao local.', [
+                    'order_id' => $order->id,
+                ]);
+                return;
+            }
+
             $printer->print($order);
         } catch (\Throwable $e) {
             Log::error('Falha ao imprimir pedido via ESC/POS.', [

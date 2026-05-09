@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Mike42\Escpos\Printer;
+use Mike42\Escpos\PrintConnectors\DummyPrintConnector;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
@@ -14,11 +16,20 @@ class OrderReceiptPrinter
 {
     public function print(Order $order): void
     {
+        if ($this->isLocalConnection()) {
+            throw new \RuntimeException('Local printing is enabled on this server. Execute the local printer agent instead.');
+        }
+
         if (!$this->isEnabled()) {
             Log::info('Impressao automatica desativada. Pedido nao enviado para a impressora.', [
                 'order_id' => $order->id,
             ]);
 
+            return;
+        }
+
+        if ($this->isMicroserviceConnection()) {
+            $this->sendToMicroservice($order);
             return;
         }
 
@@ -190,6 +201,51 @@ class OrderReceiptPrinter
         $printer->cut();
     }
 
+    public function isLocalConnection(): bool
+    {
+        return $this->setting('print_connection', 'network') === 'local';
+    }
+
+    public function isMicroserviceConnection(): bool
+    {
+        return $this->setting('print_connection', 'network') === 'microservice';
+    }
+
+    protected function sendToMicroservice(Order $order): void
+    {
+        $url = $this->requiredSetting('print_microservice_url');
+        $token = $this->requiredSetting('print_microservice_token');
+
+        $connector = new DummyPrintConnector();
+        $printer = new Printer($connector);
+
+        try {
+            if ($order->isDelivery()) {
+                $this->renderReceipt($printer, $order, 'VIA DO RESTAURANTE');
+                $this->renderReceipt($printer, $order, 'VIA DO ENTREGADOR');
+            } else {
+                $this->renderReceipt($printer, $order);
+            }
+        } finally {
+            $printer->close();
+        }
+
+        $data = $connector->getData();
+        $response = Http::withToken($token)
+            ->timeout(30)
+            ->post($url, [
+                'encoding' => 'base64',
+                'content' => base64_encode($data),
+                'connection' => 'network',
+                'host' => $this->setting('print_host'),
+                'port' => (int) $this->setting('print_port', '9100'),
+            ]);
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('Falha ao enviar para o microservico de impressao: ' . $response->body());
+        }
+    }
+
     protected function makeConnector(): FilePrintConnector|NetworkPrintConnector|WindowsPrintConnector
     {
         $connection = $this->setting('print_connection', 'network');
@@ -201,6 +257,7 @@ class OrderReceiptPrinter
             'file' => new FilePrintConnector(
                 $this->requiredSetting('print_file_connector')
             ),
+            'local' => throw new \RuntimeException('Local printing is not supported by the server-side ESC/POS connector.'),
             default => new NetworkPrintConnector(
                 $this->requiredSetting('print_host'),
                 (int) $this->setting('print_port', '9100')
