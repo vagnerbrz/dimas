@@ -1,72 +1,102 @@
-# Como conectar o Laravel hospedado ao micro serviço local
+# Conectividade da impressora local
 
-O Laravel hospedado precisa acessar o micro serviço Node que roda no seu PC local. Isso requer que o PC local seja acessível pela internet.
+O Laravel hospedado nao consegue acessar diretamente uma impressora que esta na rede local do restaurante. Existem duas formas de resolver isso:
 
-## Opções de conectividade
+## Opcao recomendada: agente local sem tunel
 
-### 1. Túnel reverso (Recomendado - Seguro)
+Use o agente PHP da raiz do projeto:
 
-Use ferramentas como ngrok, Cloudflare Tunnel ou LocalTunnel para expor o micro serviço local na internet de forma segura.
+```bash
+php scripts/local_printer_agent.php
+```
 
-#### Exemplo com ngrok:
+Nesse modelo, a maquina do restaurante consulta o servidor hospedado de tempos em tempos e imprime os pedidos pendentes. A conexao sai da rede do restaurante para o servidor, entao nao precisa expor porta local, ngrok, IP publico nem redirecionamento no roteador.
 
-1. Instale ngrok: https://ngrok.com/download
-2. Execute o micro serviço local na porta 3000
-3. Abra túnel: `ngrok http 3000`
-4. Use a URL gerada (ex: `https://abc123.ngrok.io`) no `PRINT_MICROSERVICE_URL` do Laravel
-
-#### Exemplo com Cloudflare Tunnel:
-
-1. Instale cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/
-2. Configure túnel para a porta 3000
-3. Use a URL do Cloudflare no `PRINT_MICROSERVICE_URL`
-
-### 2. IP público direto (Não recomendado)
-
-Se o seu PC local tem IP público fixo:
-
-- Configure o roteador para redirecionar porta 3000 para o PC local
-- Use `PRINT_MICROSERVICE_URL=http://seu-ip-publico:3000/print`
-
-⚠️ **Riscos**: Exposição direta à internet, vulnerabilidades de segurança.
-
-### 3. VPN
-
-Configure VPN entre o servidor hospedado e a rede local do restaurante.
-
-## Configuração no Laravel hospedado
-
-Após expor o micro serviço local:
+Configure no `.env` do servidor hospedado:
 
 ```env
+PRINT_ENABLED=true
+PRINT_CONNECTION=local
+LOCAL_PRINT_API_TOKEN=uma-chave-secreta-forte
+```
+
+Configure no `.env` da raiz do projeto na maquina do restaurante:
+
+```env
+PRINT_ENABLED=true
+PRINT_CONNECTION=network
+PRINT_HOST=192.168.0.100
+PRINT_PORT=9100
+
+LOCAL_PRINT_API_URL=https://seu-servidor.com
+LOCAL_PRINT_API_TOKEN=mesma-chave-secreta-forte
+LOCAL_PRINT_POLL_INTERVAL=10
+```
+
+Teste a impressora local:
+
+```bash
+php scripts/test_local_printer.php
+```
+
+Depois inicie o agente:
+
+```bash
+php scripts/local_printer_agent.php
+```
+
+## Opcao alternativa: microservico exposto por tunel
+
+Use esta opcao apenas se voce realmente quiser que o servidor hospedado chame um endpoint HTTP rodando no computador do restaurante.
+
+### Erro ERR_NGROK_4018
+
+O erro abaixo significa que o ngrok esta instalado, mas nao autenticado:
+
+```text
+authentication failed: Usage of ngrok requires a verified account and authtoken.
+ERR_NGROK_4018
+```
+
+Para continuar com ngrok:
+
+1. Crie/verifique uma conta no ngrok.
+2. Copie o authtoken no painel do ngrok.
+3. Rode na maquina do restaurante:
+
+```bash
+ngrok config add-authtoken SEU_AUTHTOKEN
+```
+
+4. Inicie novamente:
+
+```bash
+npm run start-tunnel
+```
+
+O script deve mostrar uma URL parecida com:
+
+```text
+PRINT_MICROSERVICE_URL=https://abc123.ngrok-free.app/print
+```
+
+No Laravel hospedado, configure:
+
+```env
+PRINT_ENABLED=true
 PRINT_CONNECTION=microservice
-PRINT_MICROSERVICE_URL=https://sua-url-exposta/print
-PRINT_MICROSERVICE_TOKEN=seu_token_secreto
+PRINT_MICROSERVICE_URL=https://abc123.ngrok-free.app/print
+PRINT_MICROSERVICE_TOKEN=mesmo-token-do-microservico
 ```
 
-## Verificação
+No `.env` de `printer-microservice`, o token esperado pelo servidor Node e:
 
-Teste se o Laravel consegue acessar o micro serviço:
-
-```bash
-php scripts/test_microservice_connectivity.php
+```env
+LOCAL_PRINT_API_TOKEN=mesmo-token-do-microservico
 ```
 
-Este script verifica:
-- Configuração das variáveis de ambiente
-- Conectividade HTTP com o micro serviço
-- Autenticação via token
-- Capacidade de enviar dados de impressão de teste
+## Observacoes
 
-```bash
-curl -H "Authorization: Bearer SEU_TOKEN" https://sua-url-exposta/health
-```
-
-Deve retornar: `{"status":"ok"}`
-
-## Observações
-
-- O micro serviço local precisa estar sempre rodando
-- Use HTTPS quando possível para segurança
-- Mantenha o token secreto compartilhado apenas entre Laravel e micro serviço
-- Monitore logs do micro serviço para debug
+- Para producao em restaurante, prefira o agente local sem tunel.
+- URLs gratuitas do ngrok podem mudar ao reiniciar, exigindo atualizar `PRINT_MICROSERVICE_URL` no servidor.
+- Se um token foi compartilhado em conversa, log ou print, gere outro antes de usar em producao.

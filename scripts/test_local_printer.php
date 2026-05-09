@@ -40,7 +40,7 @@ $order = new Order([
     'payment_method' => 'pix',
     'observations' => 'Recibo de teste do agente local.',
 ]);
-$order->id = 999999;
+$order->setRawAttributes(array_merge($order->getAttributes(), ['id' => 999999]), true);
 $order->created_at = Carbon::now();
 $order->setRelation('customer', new Customer([
     'name' => 'Cliente Teste',

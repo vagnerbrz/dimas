@@ -11,6 +11,7 @@ use App\Services\OrderReceiptPrinter;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Database\Eloquent\Model;
 
 $basePath = realpath(__DIR__ . '/..');
 if ($basePath === false) {
@@ -44,9 +45,24 @@ $client = new Client([
 
 $printer = $app->make(OrderReceiptPrinter::class);
 
+function modelFromPayload(string $class, array $data, array $relations = []): Model
+{
+    foreach ($relations as $relation) {
+        unset($data[$relation]);
+    }
+
+    /** @var Model $model */
+    $model = new $class();
+    $model->setRawAttributes($data, true);
+    $model->exists = true;
+
+    return $model;
+}
+
 function hydrateOrder(array $data): Order
 {
-    $order = new Order($data);
+    /** @var Order $order */
+    $order = modelFromPayload(Order::class, $data, ['customer', 'address', 'items']);
 
     if (!empty($data['created_at'])) {
         $order->created_at = new Carbon($data['created_at']);
@@ -57,18 +73,19 @@ function hydrateOrder(array $data): Order
     }
 
     if (!empty($data['customer'])) {
-        $order->setRelation('customer', new Customer($data['customer']));
+        $order->setRelation('customer', modelFromPayload(Customer::class, $data['customer']));
     }
 
     if (!empty($data['address'])) {
-        $order->setRelation('address', new Address($data['address']));
+        $order->setRelation('address', modelFromPayload(Address::class, $data['address']));
     }
 
     $items = collect($data['items'] ?? [])->map(function (array $itemData) {
-        $item = new OrderItem($itemData);
+        /** @var OrderItem $item */
+        $item = modelFromPayload(OrderItem::class, $itemData, ['product']);
 
         if (!empty($itemData['product'])) {
-            $item->setRelation('product', new Product($itemData['product']));
+            $item->setRelation('product', modelFromPayload(Product::class, $itemData['product']));
         }
 
         return $item;
@@ -127,10 +144,12 @@ while (true) {
                 $message = $e->getMessage();
                 failJob($client, $jobId, $message);
                 fwrite(STDERR, date('[Y-m-d H:i:s]') . " Erro ao imprimir pedido {$order->id}: {$message}\n");
+                fwrite(STDERR, $e->getTraceAsString() . "\n");
             }
         }
     } catch (Throwable $e) {
         fwrite(STDERR, date('[Y-m-d H:i:s]') . " Falha na comunicacao com o servidor: {$e->getMessage()}\n");
+        fwrite(STDERR, $e->getTraceAsString() . "\n");
     }
 
     sleep(max(1, $interval));
