@@ -1,0 +1,398 @@
+{
+  "name": "Restaurante Dimas - Atendimento WhatsApp",
+  "nodes": [
+    {
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "parameters": {
+        "path": "restaurante-atendente-pedidos-v2",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "restaurante-webhook",
+      "typeVersion": 1
+    },
+    {
+      "name": "Extrair Dados WhatsApp",
+      "type": "n8n-nodes-base.function",
+      "position": [450, 300],
+      "parameters": {
+        "jsCode": "// Extrair dados da mensagem WhatsApp\nconst body = $input.first().json;\n\n// Formato esperado do provedor WhatsApp\nconst phone = body.phone || body.from || body.contact?.phone || '';\nconst message = body.message || body.text || body.body || '';\nconst contactName = body.contact_name || body.contact?.name || body.profile?.name || 'Cliente';\n\n// Normalizar telefone (remover + e espaços)\nlet normalizedPhone = phone.replace(/[^\\d]/g, '');\nif (normalizedPhone.startsWith('55') && normalizedPhone.length === 12) {\n  // Já tem código país + DDD + número\n} else if (normalizedPhone.length === 11) {\n  // Adicionar código do Brasil\n  normalizedPhone = '55' + normalizedPhone;\n} else if (normalizedPhone.length === 10) {\n  // Número sem 9º dígito\n  normalizedPhone = '55' + normalizedPhone;\n}\n\nreturn {\n  phone: normalizedPhone,\n  message: message.trim().toLowerCase(),\n  contactName: contactName.trim(),\n  raw: body\n};"
+      },
+      "typeVersion": 1
+    },
+    {
+      "name": "Detectar Intenção",
+      "type": "n8n-nodes-base.switch",
+      "position": [650, 300],
+      "parameters": {
+        "dataPropertyName": "message",
+        "rules": {
+          "rules": [
+            {
+              "value": "cardapio",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "menu",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "oi",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "ola",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "horario",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "funciona",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "entrega",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "pedido",
+              "string": {
+                "operation": "contains"
+              }
+            },
+            {
+              "value": "preco",
+              "string": {
+                "operation": "contains"
+              }
+            }
+          ]
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "name": "Buscar Cardápio",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [850, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "http://127.0.0.1:8000/api/n8n/menu",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Token",
+              "value": "cf7b27eac99c771ee2bf6b420277075c36733de6f8292d926d7e4dd62e7ebea5"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "typeVersion": 4
+    },
+    {
+      "name": "Formatar Cardápio",
+      "type": "n8n-nodes-base.function",
+      "position": [1050, 200],
+      "parameters": {
+        "jsCode": "// Formatar cardápio para WhatsApp\nconst menu = $input.first().json;\n\nlet response = `🍽️ *CARDÁPIO DO ${menu.restaurant.toUpperCase()}*\\n\\n`;\n\n// Itens principais\nresponse += `*PRINCIPAIS:*\\n`;\nmenu.main_items.forEach((item, index) => {\n  response += `${index + 1}. *${item.name}* - R$ ${item.formatted_price}\\n`;\n  if (item.description) {\n    response += `   _${item.description}_\\n`;\n  }\n});\n\n// Itens extras\nif (menu.extra_items.length > 0) {\n  response += `\\n*EXTRAS:*\\n`;\n  menu.extra_items.forEach((item, index) => {\n    const itemNumber = menu.main_items.length + index + 1;\n    response += `${itemNumber}. *${item.name}* - R$ ${item.formatted_price}\\n`;\n  });\n}\n\nresponse += `\\n💡 *COMO PEDIR:*\\n`;\nresponse += `Digite o *NÚMERO* do prato desejado.\\n`;\nresponse += `Exemplo: \\\"1\\\" para ${menu.main_items[0]?.name || 'o primeiro prato'}\\n\\n`;\nresponse += `📞 Precisou de ajuda? Digite \\\"atendente\\\"`;\n\nreturn {\n  message: response,\n  menu: menu\n};"
+      },
+      "typeVersion": 1
+    },
+    {
+      "name": "Responder Horário",
+      "type": "n8n-nodes-base.function",
+      "position": [850, 400],
+      "parameters": {
+        "jsCode": "const response = `⏰ *HORÁRIO DE FUNCIONAMENTO*\\n\\n`;\nresponse += `• *Segunda a Sábado:* 11h às 22h\\n`;\nresponse += `• *Domingo:* 12h às 20h\\n\\n`;\nresponse += `🚚 *ENTREGA:*\\n`;\nresponse += `• Taxa: R$ 5,00\\n`;\nresponse += `• Tempo médio: 40 minutos\\n\\n`;\nresponse += `💳 *PAGAMENTO:*\\n`;\nresponse += `• Dinheiro\\n• PIX\\n• Cartão (débito/crédito)\\n• VR/VA\\n\\n`;\nresponse += `Digite \\\"cardapio\\\" para ver nosso menu!`;\n\nreturn { message: response };"
+      },
+      "typeVersion": 1
+    },
+    {
+      "name": "Responder Saudação",
+      "type": "n8n-nodes-base.function",
+      "position": [850, 500],
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst name = data.contactName || 'Cliente';\n\nconst response = `👋 Olá *${name}*! Seja bem-vindo ao *Restaurante Dimas*!\\n\\n`;\nresponse += `Eu sou o assistente virtual do Dimas. Como posso ajudar?\\n\\n`;\nresponse += `*Opções rápidas:*\\n`;\nresponse += `• Digite \\\"cardapio\\\" para ver nosso menu\\n`;\nresponse += `• Digite \\\"horario\\\" para ver funcionamento\\n`;\nresponse += `• Digite \\\"entrega\\\" para informações de delivery\\n\\n`;\nresponse += `Ou me diga o que você precisa! 😊`;\n\nreturn { message: response };"
+      },
+      "typeVersion": 1
+    },
+    {
+      "name": "Processar Pedido",
+      "type": "n8n-nodes-base.function",
+      "position": [850, 600],
+      "parameters": {
+        "jsCode": "// Este node seria expandido para processar pedidos completos\n// Por enquanto, apenas uma mensagem informativa\n\nconst response = `🛒 *SISTEMA DE PEDIDOS*\\n\\n`;\nresponse += `Para fazer um pedido, siga estes passos:\\n\\n`;\nresponse += `1. Digite \\\"cardapio\\\" para ver o menu\\n`;\nresponse += `2. Digite o *NÚMERO* do prato desejado\\n`;\nresponse += `3. Informe a quantidade\\n`;\nresponse += `4. Escolha entrega ou retirada\\n`;\nresponse += `5. Confirme o pedido\\n\\n`;\nresponse += `Vamos começar? Digite \\\"cardapio\\\"!`;\n\nreturn { message: response };"
+      },
+      "typeVersion": 1
+    },
+    {
+      "name": "Resposta Padrão",
+      "type": "n8n-nodes-base.function",
+      "position": [850, 700],
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst response = `🤖 *ASSISTENTE DIMAS*\\n\\n`;\nresponse += `Desculpe, não entendi \\\"${data.message}\\\".\\n\\n`;\nresponse += `*Posso ajudar com:*\\n`;\nresponse += `• \\\"cardapio\\\" - Ver menu completo\\n`;\nresponse += `• \\\"horario\\\" - Horário de funcionamento\\n`;\nresponse += `• \\\"entrega\\\" - Informações de delivery\\n`;\nresponse += `• \\\"pedido\\\" - Fazer um pedido\\n\\n`;\nresponse += `Ou digite \\\"atendente\\\" para falar com um humano.`;\n\nreturn { message: response };"
+      },
+      "typeVersion": 1
+    },
+    {
+      "name": "Enviar para WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1250, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/n8n/messages/text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Token",
+              "value": "cf7b27eac99c771ee2bf6b420277075c36733de6f8292d926d7e4dd62e7ebea5"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "contact_name",
+              "value": "={{ $json.contactName }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "typeVersion": 4
+    },
+    {
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1450, 300],
+      "parameters": {
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extrair Dados WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Dados WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Detectar Intenção",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detectar Intenção": {
+      "main": [
+        [
+          {
+            "node": "Buscar Cardápio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar Cardápio",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Responder Saudação",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Responder Saudação",
+            "type": "main",
+            "index": 3
+          }
+        ],
+        [
+          {
+            "node": "Responder Horário",
+            "type": "main",
+            "index": 4
+          }
+        ],
+        [
+          {
+            "node": "Responder Horário",
+            "type": "main",
+            "index": 5
+          }
+        ],
+        [
+          {
+            "node": "Processar Pedido",
+            "type": "main",
+            "index": 6
+          }
+        ],
+        [
+          {
+            "node": "Processar Pedido",
+            "type": "main",
+            "index": 7
+          }
+        ],
+        [
+          {
+            "node": "Resposta Padrão",
+            "type": "main",
+            "index": 8
+          }
+        ]
+      ]
+    },
+    "Buscar Cardápio": {
+      "main": [
+        [
+          {
+            "node": "Formatar Cardápio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Cardápio": {
+      "main": [
+        [
+          {
+            "node": "Enviar para WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder Horário": {
+      "main": [
+        [
+          {
+            "node": "Enviar para WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder Saudação": {
+      "main": [
+        [
+          {
+            "node": "Enviar para WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Pedido": {
+      "main": [
+        [
+          {
+            "node": "Enviar para WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resposta Padrão": {
+      "main": [
+        [
+          {
+            "node": "Enviar para WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar para WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "1",
+  "triggerCount": 1,
+  "tags": [],
+  "id": "restaurante-dimas-whatsapp"
+}
