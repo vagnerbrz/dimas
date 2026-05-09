@@ -30,7 +30,7 @@ class LocalPrintJobController extends Controller
     {
         $this->authorizeRequest($request);
 
-        $jobs = LocalPrintJob::pending()
+        $jobs = LocalPrintJob::pollable()
             ->with(['order.customer', 'order.address', 'order.items.product'])
             ->orderBy('created_at')
             ->limit(20)
@@ -53,7 +53,7 @@ class LocalPrintJobController extends Controller
         $this->authorizeRequest($request);
 
         $job->update([
-            'status' => 'printed',
+            'status' => LocalPrintJob::STATUS_PRINTED,
             'last_attempted_at' => now(),
             'error_message' => null,
         ]);
@@ -67,7 +67,7 @@ class LocalPrintJobController extends Controller
 
         $job->increment('attempts');
         $job->update([
-            'status' => 'failed',
+            'status' => LocalPrintJob::STATUS_FAILED,
             'last_attempted_at' => now(),
             'error_message' => trim((string) $request->input('error_message', '')), 
         ]);

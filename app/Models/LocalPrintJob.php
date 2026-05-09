@@ -9,6 +9,10 @@ class LocalPrintJob extends Model
 {
     use HasFactory;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_PRINTED = 'printed';
+    public const STATUS_FAILED = 'failed';
+
     protected $fillable = [
         'order_id',
         'status',
@@ -21,7 +25,7 @@ class LocalPrintJob extends Model
     {
         return self::firstOrCreate(
             ['order_id' => $orderId],
-            ['status' => 'pending', 'attempts' => 0]
+            ['status' => self::STATUS_PENDING, 'attempts' => 0]
         );
     }
 
@@ -32,6 +36,24 @@ class LocalPrintJob extends Model
 
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    public function scopePollable($query)
+    {
+        $maxAttempts = max(1, (int) env('LOCAL_PRINT_MAX_ATTEMPTS', 10));
+        $retryAfterSeconds = max(1, (int) env('LOCAL_PRINT_RETRY_AFTER_SECONDS', 30));
+
+        return $query->where(function ($query) use ($maxAttempts, $retryAfterSeconds) {
+            $query->where('status', self::STATUS_PENDING)
+                ->orWhere(function ($query) use ($maxAttempts, $retryAfterSeconds) {
+                    $query->where('status', self::STATUS_FAILED)
+                        ->where('attempts', '<', $maxAttempts)
+                        ->where(function ($query) use ($retryAfterSeconds) {
+                            $query->whereNull('last_attempted_at')
+                                ->orWhere('last_attempted_at', '<=', now()->subSeconds($retryAfterSeconds));
+                        });
+                });
+        });
     }
 }

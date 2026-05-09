@@ -1,57 +1,102 @@
-# Agente Local de Impressão
+# Agente Local de Impressao
 
-Este serviço local roda no restaurante e imprime pedidos que o servidor hospedado envia para a fila de impressão.
+Este servico roda na maquina do restaurante e imprime pedidos que o servidor hospedado deixa em uma fila.
+
+Essa abordagem e mais indicada do que expor um microservico local por tunel: o agente faz uma conexao de saida para o servidor hospedado, entao a impressora continua protegida dentro da rede local do restaurante.
 
 ## Como funciona
 
-1. O servidor hospedado grava um `LocalPrintJob` para cada pedido que deve ser impresso localmente.
+1. O servidor hospedado cria um `LocalPrintJob` quando um pedido precisa ser impresso.
 2. O agente local consulta o servidor periodicamente via API.
-3. O agente recebe os pedidos pendentes, imprime na impressora local e confirma a ocorrência ao servidor.
+3. O agente baixa os pedidos pendentes, imprime na impressora local e confirma o resultado ao servidor.
+4. Se a impressao falhar, o job entra em retry automatico conforme `LOCAL_PRINT_MAX_ATTEMPTS` e `LOCAL_PRINT_RETRY_AFTER_SECONDS`.
 
-## Instalação
+## Configuracao no servidor hospedado
 
-1. Copie o repositório para a máquina local do restaurante.
-2. Configure a impressão local no `.env` do projeto local, por exemplo:
+No `.env` do servidor hospedado:
 
 ```env
-PRINT_CONNECTION=windows
-PRINT_WINDOWS_CONNECTOR=\\\\COMPUTER\\PRINTER_NAME
+PRINT_ENABLED=true
+PRINT_CONNECTION=local
+LOCAL_PRINT_API_TOKEN=uma-chave-secreta-forte
+LOCAL_PRINT_MAX_ATTEMPTS=10
+LOCAL_PRINT_RETRY_AFTER_SECONDS=30
 ```
 
-ou, para rede:
+Depois rode as migrations no servidor hospedado:
+
+```bash
+php artisan migrate
+```
+
+Se a fila nao estiver em modo `sync`, mantenha o worker do Laravel rodando:
+
+```bash
+php artisan queue:work
+```
+
+## Configuracao na maquina do restaurante
+
+Copie o projeto para a maquina que esta na mesma rede da impressora e configure o `.env` local.
+
+Para impressora de rede:
 
 ```env
+PRINT_ENABLED=true
 PRINT_CONNECTION=network
 PRINT_HOST=192.168.0.100
 PRINT_PORT=9100
+PRINT_STORE_NAME="Restaurante do Dimas"
 ```
 
-3. Configure a API remota no `.env` local:
+Para impressora compartilhada no Windows:
 
 ```env
-LOCAL_PRINT_API_URL=https://seu-servidor-hosted.com
-LOCAL_PRINT_API_TOKEN=uma-chave-secreta-fornecida
+PRINT_ENABLED=true
+PRINT_CONNECTION=windows
+PRINT_WINDOWS_CONNECTOR=POS80
+PRINT_STORE_NAME="Restaurante do Dimas"
+```
+
+Configure tambem o acesso ao servidor hospedado:
+
+```env
+LOCAL_PRINT_API_URL=https://seu-servidor.com
+LOCAL_PRINT_API_TOKEN=mesma-chave-secreta-do-servidor
 LOCAL_PRINT_POLL_INTERVAL=10
 ```
 
-4. Execute o agente local:
+Execute o agente local:
 
 ```bash
 php scripts/local_printer_agent.php
 ```
 
-## Configuração no servidor hospedado
+Tambem e possivel passar os parametros direto:
 
-No servidor hospedado, defina:
-
-```env
-PRINT_CONNECTION=local
+```bash
+php scripts/local_printer_agent.php https://seu-servidor.com mesma-chave-secreta-do-servidor 10
 ```
 
-E crie a variável secreta `LOCAL_PRINT_API_TOKEN` com um valor compartilhado entre o servidor e o agente local.
+## Testes rapidos
 
-## Observações
+No servidor hospedado, confirme que existe a tabela:
 
-- O servidor precisa estar acessível pela máquina local do restaurante.
-- A impressora local não precisa ser exposta diretamente na internet.
-- O agente local deve ser executado na rede onde a impressora está conectada.
+```bash
+php artisan migrate:status
+```
+
+Na maquina do restaurante, teste a impressora local diretamente:
+
+```bash
+php scripts/test_local_printer.php
+```
+
+Depois deixe o agente rodando e crie ou aceite um pedido no sistema hospedado. O terminal do agente deve mostrar o job sendo baixado e impresso.
+
+## Observacoes
+
+- A impressora nao precisa ser exposta na internet.
+- O agente deve rodar na mesma rede da impressora.
+- O `.env` local da maquina do restaurante define a impressora usada pelo agente.
+- O token do servidor e o token do agente precisam ser iguais.

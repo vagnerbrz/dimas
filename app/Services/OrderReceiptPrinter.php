@@ -367,6 +367,10 @@ class OrderReceiptPrinter
         $envMap = config('printing.settings_map', []);
         $envDefault = array_key_exists($key, $envMap) ? env($envMap[$key], $default) : $default;
 
+        if (config('printing.prefer_env', false)) {
+            return $envDefault;
+        }
+
         return Setting::get($key, $envDefault);
     }
 }

@@ -20,6 +20,7 @@ if ($basePath === false) {
 
 $app = require $basePath . '/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
+config(['printing.prefer_env' => true]);
 
 $apiUrl = $argv[1] ?? env('LOCAL_PRINT_API_URL');
 $apiToken = $argv[2] ?? env('LOCAL_PRINT_API_TOKEN');

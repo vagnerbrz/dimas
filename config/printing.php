@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'prefer_env' => false,
+
     'settings_map' => [
         'print_enabled' => 'PRINT_ENABLED',
         'print_connection' => 'PRINT_CONNECTION',
