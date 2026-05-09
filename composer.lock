@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4862204cfbcfa7b8f4d33d75480ae939",
+    "content-hash": "ad4fcda8bfe09821ae6ec449af84aedc",
     "packages": [
         {
             "name": "beyondcode/laravel-websockets",
@@ -4567,20 +4567,20 @@
         },
         {
             "name": "symfony/css-selector",
-            "version": "v8.0.8",
+            "version": "v7.4.9",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/css-selector.git",
-                "reference": "8db1c00226a94d8ab6aa89d9224eeee91e2ea2ed"
+                "reference": "b75663ed96cf4756e28e3105476f220f92886cc4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/css-selector/zipball/8db1c00226a94d8ab6aa89d9224eeee91e2ea2ed",
-                "reference": "8db1c00226a94d8ab6aa89d9224eeee91e2ea2ed",
+                "url": "https://api.github.com/repos/symfony/css-selector/zipball/b75663ed96cf4756e28e3105476f220f92886cc4",
+                "reference": "b75663ed96cf4756e28e3105476f220f92886cc4",
                 "shasum": ""
             },
             "require": {
-                "php": ">=8.4"
+                "php": ">=8.2"
             },
             "type": "library",
             "autoload": {
@@ -4612,7 +4612,7 @@
             "description": "Converts CSS selectors to XPath expressions",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/css-selector/tree/v8.0.8"
+                "source": "https://github.com/symfony/css-selector/tree/v7.4.9"
             },
             "funding": [
                 {
@@ -4632,7 +4632,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-03-30T15:14:47+00:00"
+            "time": "2026-04-18T13:18:21+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -5805,7 +5805,7 @@
         },
         {
             "name": "symfony/polyfill-php80",
-            "version": "v1.36.0",
+            "version": "v1.37.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php80.git",
@@ -5865,7 +5865,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php80/tree/v1.36.0"
+                "source": "https://github.com/symfony/polyfill-php80/tree/v1.37.0"
             },
             "funding": [
                 {
@@ -9600,12 +9600,15 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.1"
+        "php": "^8.3"
     },
-    "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "platform-dev": [],
+    "platform-overrides": {
+        "php": "8.3.0"
+    },
+    "plugin-api-version": "2.3.0"
 }
