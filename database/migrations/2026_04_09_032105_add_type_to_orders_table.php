@@ -8,17 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('type')->default('counter')->after('id'); // counter, delivery
-            $table->foreignId('address_id')->nullable()->change();
-        });
+        if (! Schema::hasColumn('orders', 'type')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->string('type')->default('counter')->after('id'); // counter, delivery, table
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn('type');
-            $table->foreignId('address_id')->nullable()->change();
-        });
+        if (Schema::hasColumn('orders', 'type')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropColumn('type');
+            });
+        }
     }
 };
