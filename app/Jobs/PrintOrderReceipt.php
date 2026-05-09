@@ -33,6 +33,14 @@ class PrintOrderReceipt implements ShouldQueue
         }
 
         try {
+            $printConfig = $printer->configuration();
+
+            Log::info('Iniciando job de impressao automatica.', [
+                'order_id' => $order->id,
+                'print_connection' => $printConfig['print_connection'] ?? null,
+                'print_enabled' => $printConfig['print_enabled'] ?? null,
+            ]);
+
             if ($printer->isLocalConnection()) {
                 LocalPrintJob::createIfNotExists($order->id);
                 Log::info('Pedido adicionado a fila de impressao local.', [
@@ -42,6 +50,9 @@ class PrintOrderReceipt implements ShouldQueue
             }
 
             $printer->print($order);
+            Log::info('Job de impressao automatica concluido.', [
+                'order_id' => $order->id,
+            ]);
         } catch (\Throwable $e) {
             Log::error('Falha ao imprimir pedido via ESC/POS.', [
                 'order_id' => $order->id,

@@ -26,10 +26,18 @@ config(['printing.prefer_env' => true]);
 $apiUrl = $argv[1] ?? env('LOCAL_PRINT_API_URL');
 $apiToken = $argv[2] ?? env('LOCAL_PRINT_API_TOKEN');
 $interval = (int) ($argv[3] ?? env('LOCAL_PRINT_POLL_INTERVAL', 10));
+$localPrintConnection = (string) env('PRINT_CONNECTION', 'network');
 
 if (!$apiUrl || !$apiToken) {
     fwrite(STDERR, "Uso: php scripts/local_printer_agent.php <REMOTE_API_URL> <API_TOKEN> [POLL_INTERVAL_SECONDS]\n");
     fwrite(STDERR, "Ou defina LOCAL_PRINT_API_URL e LOCAL_PRINT_API_TOKEN no .env local.\n");
+    exit(1);
+}
+
+if (in_array($localPrintConnection, ['local', 'microservice'], true)) {
+    fwrite(STDERR, "PRINT_CONNECTION={$localPrintConnection} nao e valido para o agente local.\n");
+    fwrite(STDERR, "Configure o .env da raiz com PRINT_CONNECTION=network ou PRINT_CONNECTION=windows.\n");
+    fwrite(STDERR, "O arquivo printer-microservice/.env nao e usado por este agente PHP.\n");
     exit(1);
 }
 

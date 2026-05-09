@@ -14,6 +14,18 @@ use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 
 class OrderReceiptPrinter
 {
+    public const SETTING_KEYS = [
+        'print_enabled',
+        'print_connection',
+        'print_host',
+        'print_port',
+        'print_windows_connector',
+        'print_file_connector',
+        'print_microservice_url',
+        'print_microservice_token',
+        'print_store_name',
+    ];
+
     public function print(Order $order): void
     {
         if ($this->isLocalConnection()) {
@@ -211,6 +223,17 @@ class OrderReceiptPrinter
         return $this->setting('print_connection', 'network') === 'microservice';
     }
 
+    public function configuration(): array
+    {
+        $settings = [];
+
+        foreach (self::SETTING_KEYS as $key) {
+            $settings[$key] = $this->setting($key);
+        }
+
+        return $settings;
+    }
+
     protected function sendToMicroservice(Order $order): void
     {
         $url = $this->requiredSetting('print_microservice_url');
@@ -226,11 +249,12 @@ class OrderReceiptPrinter
             } else {
                 $this->renderReceipt($printer, $order);
             }
+
+            $data = $connector->getData();
         } finally {
             $printer->close();
         }
 
-        $data = $connector->getData();
         $response = Http::withToken($token)
             ->timeout(30)
             ->post($url, [
@@ -364,13 +388,12 @@ class OrderReceiptPrinter
 
     protected function setting(string $key, ?string $default = null): ?string
     {
-        $envMap = config('printing.settings_map', []);
-        $envDefault = array_key_exists($key, $envMap) ? env($envMap[$key], $default) : $default;
+        $configDefault = config('printing.defaults.' . $key, $default);
 
         if (config('printing.prefer_env', false)) {
-            return $envDefault;
+            return $configDefault;
         }
 
-        return Setting::get($key, $envDefault);
+        return Setting::get($key, $configDefault);
     }
 }

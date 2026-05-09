@@ -19,7 +19,7 @@ class LocalPrintJobController extends Controller
             }
         }
 
-        $expected = (string) env('LOCAL_PRINT_API_TOKEN', '');
+        $expected = (string) config('printing.local_api_token', '');
 
         if ($expected === '' || !hash_equals($expected, $token)) {
             abort(401, 'Unauthorized');

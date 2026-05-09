@@ -30,12 +30,14 @@ app.get('/health', (req, res) => {
 
 app.post('/print', ensureAuth, async (req, res) => {
   const payload = req.body;
-  const connection = payload.connection || process.env.DEFAULT_PRINT_CONNECTION || 'network';
+  const connection = process.env.DEFAULT_PRINT_CONNECTION || process.env.PRINT_CONNECTION || payload.connection || 'network';
   const encoding = (payload.encoding || 'utf8').toString().toLowerCase();
   const content = payload.content || payload.raw || '';
-  const host = payload.host || process.env.DEFAULT_PRINT_HOST;
-  const portNumber = payload.port || Number(process.env.DEFAULT_PRINT_PORT || 9100);
-  const filePath = payload.file_path || process.env.DEFAULT_PRINT_FILE_PATH;
+  const host = process.env.DEFAULT_PRINT_HOST || process.env.PRINT_HOST || payload.host;
+  const portNumber = Number(process.env.DEFAULT_PRINT_PORT || process.env.PRINT_PORT || payload.port || 9100);
+  const filePath = process.env.DEFAULT_PRINT_FILE_PATH || process.env.PRINT_FILE_CONNECTOR || payload.file_path;
+
+  console.log(`[${new Date().toISOString()}] Print request received: connection=${connection}, host=${host || '-'}, port=${portNumber}`);
 
   if (!content) {
     return res.status(400).json({ error: 'Missing content to print.' });
@@ -64,6 +66,7 @@ app.post('/print', ensureAuth, async (req, res) => {
       }
 
       await sendToNetworkPrinter(host, portNumber, buffer);
+      console.log(`[${new Date().toISOString()}] Print sent successfully to ${host}:${portNumber}`);
       return res.json({ success: true, printer: 'network', host, port: portNumber });
     }
 
@@ -73,12 +76,14 @@ app.post('/print', ensureAuth, async (req, res) => {
       }
 
       await fs.writeFile(filePath, buffer);
+      console.log(`[${new Date().toISOString()}] Print written successfully to ${filePath}`);
       return res.json({ success: true, printer: 'file', file_path: filePath });
     }
 
     return res.status(400).json({ error: `Unsupported connection type: ${connection}` });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    console.error(`[${new Date().toISOString()}] Print failed: ${message}`);
     return res.status(500).json({ error: 'Print failed.', details: message });
   }
 });

@@ -27,6 +27,10 @@ function runCommand(command, args, options = {}) {
   });
 }
 
+function npmCommand() {
+  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+}
+
 function isNgrokInstalled() {
   try {
     if (process.platform === 'win32') {
@@ -97,7 +101,7 @@ async function main() {
 
   if (!existsSync(path.join(__dirname, 'node_modules'))) {
     console.log('📦 Instalando dependências...');
-    await runCommand('npm', ['install'], { cwd: __dirname });
+    await runCommand(npmCommand(), ['install'], { cwd: __dirname });
   }
 
   console.log('🌐 Iniciando túnel ngrok...');
@@ -134,7 +138,7 @@ async function main() {
   }
 
   console.log('🖨️  Iniciando micro serviço...');
-  await runCommand('npm', ['start'], { cwd: __dirname });
+  await runCommand(process.execPath, ['server.js'], { cwd: __dirname });
 }
 
 main().catch((error) => {

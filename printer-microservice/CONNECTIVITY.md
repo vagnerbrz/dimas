@@ -16,6 +16,7 @@ Configure no `.env` do servidor hospedado:
 
 ```env
 PRINT_ENABLED=true
+PRINT_PREFER_ENV=true
 PRINT_CONNECTION=local
 LOCAL_PRINT_API_TOKEN=uma-chave-secreta-forte
 ```
@@ -84,9 +85,27 @@ No Laravel hospedado, configure:
 
 ```env
 PRINT_ENABLED=true
+PRINT_PREFER_ENV=true
 PRINT_CONNECTION=microservice
 PRINT_MICROSERVICE_URL=https://abc123.ngrok-free.app/print
 PRINT_MICROSERVICE_TOKEN=mesmo-token-do-microservico
+PRINT_HOST=192.168.1.101
+PRINT_PORT=9100
+```
+
+Depois de atualizar o host, rode:
+
+```bash
+php artisan config:clear
+php artisan cache:clear
+php artisan config:cache
+php artisan print:diagnose
+```
+
+Para enviar uma impressao de teste pelo microservico configurado:
+
+```bash
+php artisan print:diagnose --send-test
 ```
 
 No `.env` de `printer-microservice`, o token esperado pelo servidor Node e:

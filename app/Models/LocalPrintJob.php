@@ -41,8 +41,8 @@ class LocalPrintJob extends Model
 
     public function scopePollable($query)
     {
-        $maxAttempts = max(1, (int) env('LOCAL_PRINT_MAX_ATTEMPTS', 10));
-        $retryAfterSeconds = max(1, (int) env('LOCAL_PRINT_RETRY_AFTER_SECONDS', 30));
+        $maxAttempts = max(1, (int) config('printing.local_max_attempts', 10));
+        $retryAfterSeconds = max(1, (int) config('printing.local_retry_after_seconds', 30));
 
         return $query->where(function ($query) use ($maxAttempts, $retryAfterSeconds) {
             $query->where('status', self::STATUS_PENDING)
