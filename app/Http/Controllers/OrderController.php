@@ -29,6 +29,7 @@ class OrderController extends Controller
     public function create(Request $request)
     {
         $customers = Customer::query()
+            ->whereNotIn('phone', ['__MESA__', '__BALCAO__'])
             ->with(['addresses' => function ($query) {
                 $query->orderByDesc('is_primary')->orderBy('street');
             }])

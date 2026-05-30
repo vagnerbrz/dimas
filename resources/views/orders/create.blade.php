@@ -344,6 +344,10 @@
         return customers.find(customer => {
             const customerPhoneDigits = onlyDigits(customer.phone);
 
+            if (customerPhoneDigits.length < 8) {
+                return false;
+            }
+
             return customerPhoneDigits === phoneDigits
                 || customerPhoneDigits.endsWith(phoneDigits)
                 || phoneDigits.endsWith(customerPhoneDigits);
