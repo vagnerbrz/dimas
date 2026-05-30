@@ -24,7 +24,7 @@
         @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6">
-            <section class="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-5">
+            <section id="customer-section" class="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-5">
                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                         <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Atendimento manual</div>
@@ -113,11 +113,14 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="flex flex-col gap-2">
                         <label class="text-sm font-semibold text-gray-700">Tipo de Pedido</label>
-                        <select name="type" id="order_type" onchange="toggleAddress()" required class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <select name="type" id="order_type" onchange="handleOrderTypeChange()" required class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                             <option value="delivery" {{ old('type', 'delivery') === 'delivery' ? 'selected' : '' }}>Delivery (Entrega)</option>
                             <option value="counter" {{ old('type') === 'counter' ? 'selected' : '' }}>Balcao (Retirada)</option>
                             <option value="table" {{ old('type') === 'table' ? 'selected' : '' }}>Mesa (Consumo no local)</option>
                         </select>
+                        <div id="table-customer-helper" class="hidden text-xs text-emerald-700 font-semibold">
+                            Pedido de mesa nao precisa de cliente. O sistema usa um cliente interno automaticamente.
+                        </div>
                     </div>
 
                     <div class="flex flex-col gap-2">
@@ -284,6 +287,37 @@
     function selectedCustomer() {
         const customerId = Number(document.getElementById('customer_id').value || 0);
         return customers.find(customer => customer.id === customerId) || null;
+    }
+
+    function isTableOrder() {
+        return document.getElementById('order_type').value === 'table';
+    }
+
+    function syncCustomerSectionForType() {
+        const tableOrder = isTableOrder();
+        const customerSection = document.getElementById('customer-section');
+        const tableHelper = document.getElementById('table-customer-helper');
+        const customerId = document.getElementById('customer_id');
+        const customerName = document.getElementById('customer_name');
+        const customerPhone = document.getElementById('customer_phone');
+
+        customerSection.classList.toggle('hidden', tableOrder);
+        tableHelper.classList.toggle('hidden', !tableOrder);
+
+        if (tableOrder) {
+            customerId.required = false;
+            customerName.required = false;
+            customerPhone.required = false;
+        } else {
+            customerId.required = currentCustomerMode === 'existing';
+            customerName.required = currentCustomerMode === 'new';
+            customerPhone.required = currentCustomerMode === 'new';
+        }
+    }
+
+    function handleOrderTypeChange() {
+        syncCustomerSectionForType();
+        toggleAddress();
     }
 
     function onlyDigits(value) {
@@ -482,9 +516,9 @@
             ? 'rounded-lg px-4 py-2 text-sm font-semibold transition bg-slate-900 text-white'
             : 'rounded-lg px-4 py-2 text-sm font-semibold transition text-slate-700';
 
-        customerId.required = mode === 'existing';
-        customerName.required = mode === 'new';
-        customerPhone.required = mode === 'new';
+        customerId.required = !isTableOrder() && mode === 'existing';
+        customerName.required = !isTableOrder() && mode === 'new';
+        customerPhone.required = !isTableOrder() && mode === 'new';
 
         if (mode === 'existing') {
             updateCustomerSummary(selectedCustomer());
@@ -496,6 +530,7 @@
         }
 
         toggleAddress();
+        syncCustomerSectionForType();
     }
 
     function toggleAddress() {
@@ -614,6 +649,7 @@
         setCustomerMode(currentCustomerMode);
         setAddressMode(currentAddressMode);
         checkCustomerPhone(document.getElementById('customer_phone_lookup').value);
+        syncCustomerSectionForType();
         toggleAddress();
         toggleChangeField();
     };

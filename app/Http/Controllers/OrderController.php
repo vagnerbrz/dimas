@@ -61,15 +61,16 @@ class OrderController extends Controller
     {
         $customerMode = $request->input('customer_mode', 'existing');
         $addressMode = $customerMode === 'new' ? 'new' : $request->input('address_mode', 'existing');
+        $isTableOrder = $request->input('type') === Order::TYPE_TABLE;
         $shouldCreateAddress = $request->type === Order::TYPE_DELIVERY && $addressMode === 'new';
 
         $validated = $request->validate([
             'customer_mode' => ['required', Rule::in(['existing', 'new'])],
             'address_mode' => ['nullable', Rule::in(['existing', 'new'])],
-            'customer_id' => [$customerMode === 'existing' ? 'required' : 'nullable', 'nullable', 'exists:customers,id'],
-            'customer_name' => [$customerMode === 'new' ? 'required' : 'nullable', 'nullable', 'string', 'max:255'],
+            'customer_id' => [$customerMode === 'existing' && !$isTableOrder ? 'required' : 'nullable', 'nullable', 'exists:customers,id'],
+            'customer_name' => [$customerMode === 'new' && !$isTableOrder ? 'required' : 'nullable', 'nullable', 'string', 'max:255'],
             'customer_phone' => [
-                $customerMode === 'new' ? 'required' : 'nullable',
+                $customerMode === 'new' && !$isTableOrder ? 'required' : 'nullable',
                 'nullable',
                 'string',
                 'max:20',
@@ -106,7 +107,9 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
-            if ($validated['customer_mode'] === 'new') {
+            if ($isTableOrder) {
+                $customer = $this->tableCustomer();
+            } elseif ($validated['customer_mode'] === 'new') {
                 $customer = Customer::create([
                     'name' => $validated['customer_name'],
                     'phone' => $validated['customer_phone'],
@@ -398,5 +401,16 @@ class OrderController extends Controller
     {
         $order->delete();
         return redirect()->route('orders.index')->with('success', 'Pedido removido com sucesso!');
+    }
+
+    protected function tableCustomer(): Customer
+    {
+        return Customer::firstOrCreate(
+            ['phone' => '__MESA__'],
+            [
+                'name' => 'Cliente Mesa',
+                'email' => null,
+            ]
+        );
     }
 }
