@@ -63,16 +63,20 @@ class OrderController extends Controller
         $addressMode = $customerMode === 'new' ? 'new' : $request->input('address_mode', 'existing');
         $isTableOrder = $request->input('type') === Order::TYPE_TABLE;
         $isCounterOrder = $request->input('type') === Order::TYPE_COUNTER;
-        $usesInternalCustomer = $isTableOrder || $isCounterOrder;
+        $counterHasExistingCustomer = $isCounterOrder && $customerMode === 'existing' && $request->filled('customer_id');
+        $counterHasNewCustomer = $isCounterOrder
+            && $customerMode === 'new'
+            && ($request->filled('customer_name') || $request->filled('customer_phone') || $request->filled('customer_email'));
+        $requiresCustomer = !$isTableOrder && !$isCounterOrder;
         $shouldCreateAddress = $request->type === Order::TYPE_DELIVERY && $addressMode === 'new';
 
         $validated = $request->validate([
             'customer_mode' => ['required', Rule::in(['existing', 'new'])],
             'address_mode' => ['nullable', Rule::in(['existing', 'new'])],
-            'customer_id' => [$customerMode === 'existing' && !$usesInternalCustomer ? 'required' : 'nullable', 'nullable', 'exists:customers,id'],
-            'customer_name' => [$customerMode === 'new' && !$usesInternalCustomer ? 'required' : 'nullable', 'nullable', 'string', 'max:255'],
+            'customer_id' => [$customerMode === 'existing' && $requiresCustomer ? 'required' : 'nullable', 'nullable', 'exists:customers,id'],
+            'customer_name' => [($customerMode === 'new' && $requiresCustomer) || $counterHasNewCustomer ? 'required' : 'nullable', 'nullable', 'string', 'max:255'],
             'customer_phone' => [
-                $customerMode === 'new' && !$usesInternalCustomer ? 'required' : 'nullable',
+                ($customerMode === 'new' && $requiresCustomer) || $counterHasNewCustomer ? 'required' : 'nullable',
                 'nullable',
                 'string',
                 'max:20',
@@ -111,6 +115,14 @@ class OrderController extends Controller
         try {
             if ($isTableOrder) {
                 $customer = $this->tableCustomer();
+            } elseif ($counterHasExistingCustomer) {
+                $customer = Customer::query()->findOrFail($validated['customer_id']);
+            } elseif ($counterHasNewCustomer) {
+                $customer = Customer::create([
+                    'name' => $validated['customer_name'],
+                    'phone' => $validated['customer_phone'],
+                    'email' => $validated['customer_email'] ?? null,
+                ]);
             } elseif ($isCounterOrder) {
                 $customer = $this->counterCustomer();
             } elseif ($validated['customer_mode'] === 'new') {
