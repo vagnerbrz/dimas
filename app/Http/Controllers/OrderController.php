@@ -60,9 +60,12 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $customerMode = $request->input('customer_mode', 'existing');
+        $addressMode = $customerMode === 'new' ? 'new' : $request->input('address_mode', 'existing');
+        $shouldCreateAddress = $request->type === Order::TYPE_DELIVERY && $addressMode === 'new';
 
         $validated = $request->validate([
             'customer_mode' => ['required', Rule::in(['existing', 'new'])],
+            'address_mode' => ['nullable', Rule::in(['existing', 'new'])],
             'customer_id' => [$customerMode === 'existing' ? 'required' : 'nullable', 'nullable', 'exists:customers,id'],
             'customer_name' => [$customerMode === 'new' ? 'required' : 'nullable', 'nullable', 'string', 'max:255'],
             'customer_phone' => [
@@ -74,7 +77,7 @@ class OrderController extends Controller
             ],
             'customer_email' => ['nullable', 'email', 'max:255'],
             'type' => 'required|in:counter,delivery,table',
-            'address_id' => $request->type === 'delivery' && $customerMode === 'existing'
+            'address_id' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'existing' && $addressMode === 'existing'
                 ? 'required|exists:addresses,id'
                 : 'nullable|exists:addresses,id',
             'delivery_fee' => $request->type === 'delivery' ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
@@ -85,14 +88,14 @@ class OrderController extends Controller
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
-            'new_address.street' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'new'
+            'new_address.street' => $shouldCreateAddress
                 ? 'required|string|max:255'
                 : 'nullable|string|max:255',
-            'new_address.number' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'new'
+            'new_address.number' => $shouldCreateAddress
                 ? 'required|string|max:20'
                 : 'nullable|string|max:20',
             'new_address.complement' => 'nullable|string|max:255',
-            'new_address.neighborhood' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'new'
+            'new_address.neighborhood' => $shouldCreateAddress
                 ? 'required|string|max:255'
                 : 'nullable|string|max:255',
             'new_address.city' => 'nullable|string|max:255',
@@ -139,7 +142,7 @@ class OrderController extends Controller
             if ($request->type === Order::TYPE_DELIVERY) {
                 $deliveryFee = (float) $request->delivery_fee;
 
-                if ($validated['customer_mode'] === 'new') {
+                if ($shouldCreateAddress) {
                     $address = $customer->addresses()->create([
                         'street' => $validated['new_address']['street'],
                         'number' => $validated['new_address']['number'],

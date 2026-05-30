@@ -7,6 +7,7 @@
     <form action="{{ route('orders.store') }}" method="POST" class="space-y-8">
         @csrf
         <input type="hidden" name="customer_mode" id="customer_mode" value="{{ old('customer_mode', $selectedCustomer ? 'existing' : 'new') }}">
+        <input type="hidden" name="address_mode" id="address_mode" value="{{ old('address_mode', 'existing') }}">
 
         @if($errors->any())
             <div class="p-4 mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg">
@@ -137,6 +138,11 @@
                         <div class="rounded-lg bg-white/80 px-3 py-2 text-xs font-semibold text-blue-800 border border-blue-100">
                             Fluxo otimizado para atendimento manual
                         </div>
+                    </div>
+
+                    <div id="address-mode-switch" class="hidden inline-flex rounded-xl border border-blue-200 bg-white p-1">
+                        <button type="button" id="saved-address-button" onclick="setAddressMode('existing')" class="rounded-lg px-4 py-2 text-sm font-semibold transition">Usar endereco salvo</button>
+                        <button type="button" id="new-address-button" onclick="setAddressMode('new')" class="rounded-lg px-4 py-2 text-sm font-semibold transition">Cadastrar novo endereco</button>
                     </div>
 
                     <div id="existing-address-panel" class="space-y-4">
@@ -273,6 +279,7 @@
 
     let itemCount = 0;
     let currentCustomerMode = @json(old('customer_mode', $selectedCustomer ? 'existing' : 'new'));
+    let currentAddressMode = @json(old('address_mode', 'existing'));
 
     function selectedCustomer() {
         const customerId = Number(document.getElementById('customer_id').value || 0);
@@ -398,6 +405,7 @@
         if (customer.addresses.length === 0) {
             helper.innerText = 'Esse cliente ainda nao possui endereco cadastrado.';
             setDeliveryFee(0);
+            setAddressMode('new');
             return;
         }
 
@@ -432,6 +440,23 @@
         }
 
         populateAddresses();
+        toggleAddress();
+    }
+
+    function setAddressMode(mode) {
+        currentAddressMode = mode;
+        document.getElementById('address_mode').value = mode;
+
+        const savedButton = document.getElementById('saved-address-button');
+        const newButton = document.getElementById('new-address-button');
+
+        savedButton.className = mode === 'existing'
+            ? 'rounded-lg px-4 py-2 text-sm font-semibold transition bg-blue-700 text-white'
+            : 'rounded-lg px-4 py-2 text-sm font-semibold transition text-blue-800';
+        newButton.className = mode === 'new'
+            ? 'rounded-lg px-4 py-2 text-sm font-semibold transition bg-blue-700 text-white'
+            : 'rounded-lg px-4 py-2 text-sm font-semibold transition text-blue-800';
+
         toggleAddress();
     }
 
@@ -481,21 +506,25 @@
         const deliveryFeeInput = document.getElementById('delivery_fee');
         const existingAddressPanel = document.getElementById('existing-address-panel');
         const newAddressPanel = document.getElementById('new-address-panel');
+        const addressModeSwitch = document.getElementById('address-mode-switch');
         const newAddressFields = [
             'new_address_street',
             'new_address_number',
             'new_address_neighborhood',
         ].map(id => document.getElementById(id));
+        const usesExistingAddress = currentCustomerMode === 'existing' && currentAddressMode === 'existing';
+        const usesNewAddress = currentCustomerMode === 'new' || currentAddressMode === 'new';
 
         section.classList.toggle('hidden', !isDelivery);
-        addressSelect.required = isDelivery && currentCustomerMode === 'existing';
+        addressSelect.required = isDelivery && usesExistingAddress;
         deliveryFeeInput.required = isDelivery;
 
-        existingAddressPanel.classList.toggle('hidden', currentCustomerMode !== 'existing');
-        newAddressPanel.classList.toggle('hidden', currentCustomerMode !== 'new');
+        addressModeSwitch.classList.toggle('hidden', currentCustomerMode !== 'existing');
+        existingAddressPanel.classList.toggle('hidden', !usesExistingAddress);
+        newAddressPanel.classList.toggle('hidden', !usesNewAddress);
 
         newAddressFields.forEach(field => {
-            field.required = isDelivery && currentCustomerMode === 'new';
+            field.required = isDelivery && usesNewAddress;
         });
 
         if (!isDelivery) {
@@ -505,7 +534,7 @@
             return;
         }
 
-        if (currentCustomerMode === 'existing') {
+        if (usesExistingAddress) {
             if (!addressSelect.value) {
                 populateAddresses();
             }
@@ -583,6 +612,7 @@
         addItem();
         document.getElementById('address_id').addEventListener('change', applyAddressDefaults);
         setCustomerMode(currentCustomerMode);
+        setAddressMode(currentAddressMode);
         checkCustomerPhone(document.getElementById('customer_phone_lookup').value);
         toggleAddress();
         toggleChangeField();
