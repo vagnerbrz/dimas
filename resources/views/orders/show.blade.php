@@ -29,6 +29,10 @@
         </a>
 
         <div class="flex gap-2">
+            <a href="{{ route('orders.edit', $order->id) }}" class="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600">
+                Editar Pedido
+            </a>
+
             <a href="{{ route('orders.print', $order->id) }}" target="_blank" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800">
                 Imprimir Cupom
             </a>

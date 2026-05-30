@@ -59,6 +59,7 @@
                                         </button>
                                     </form>
                                 @endif
+                                <a href="{{ route('orders.edit', $order->id) }}" class="text-amber-600 hover:text-amber-800 font-medium text-sm">Editar</a>
                                 <a href="{{ route('orders.show', $order->id) }}" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Ver Detalhes</a>
                             </div>
                         </td>

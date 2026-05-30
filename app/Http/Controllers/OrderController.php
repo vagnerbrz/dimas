@@ -210,22 +210,157 @@ class OrderController extends Controller
 
     public function edit(Order $order)
     {
-        return view('orders.edit', compact('order'));
+        $order->load(['customer', 'address', 'items.product']);
+        $orderProductIds = $order->items->pluck('product_id');
+        $products = Product::query()
+            ->where('is_active', true)
+            ->orWhereIn('id', $orderProductIds)
+            ->orderBy('name')
+            ->get();
+
+        return view('orders.edit', compact('order', 'products'));
     }
 
     public function update(Request $request, Order $order)
     {
+        if (!$request->has('items')) {
+            $request->validate([
+                'status' => 'required|string',
+                'observations' => 'nullable|string',
+            ]);
+
+            $data = [
+                'status' => $request->status,
+            ];
+
+            if ($request->has('observations')) {
+                $data['observations'] = $request->observations;
+            }
+
+            $order->update($data);
+
+            return redirect()->route('orders.show', $order)->with('success', 'Pedido atualizado com sucesso!');
+        }
+
         $request->validate([
-            'status' => 'required|string',
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_phone' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('customers', 'phone')->ignore($order->customer_id),
+            ],
+            'customer_email' => ['nullable', 'email', 'max:255'],
+            'type' => 'required|in:counter,delivery,table',
+            'delivery_fee' => $request->type === Order::TYPE_DELIVERY ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
+            'status' => 'required|in:awaiting_acceptance,pending,preparing,shipped,delivered,cancelled',
+            'payment_method' => 'required|in:pix,debit,credit,cash',
+            'change_for' => 'nullable|numeric|min:0',
             'observations' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'address.street' => $request->type === Order::TYPE_DELIVERY
+                ? 'required|string|max:255'
+                : 'nullable|string|max:255',
+            'address.number' => $request->type === Order::TYPE_DELIVERY
+                ? 'required|string|max:20'
+                : 'nullable|string|max:20',
+            'address.complement' => 'nullable|string|max:255',
+            'address.neighborhood' => $request->type === Order::TYPE_DELIVERY
+                ? 'required|string|max:255'
+                : 'nullable|string|max:255',
+            'address.reference' => 'nullable|string|max:255',
         ]);
 
-        $order->update([
-            'status' => $request->status,
-            'observations' => $request->observations,
-        ]);
+        DB::beginTransaction();
+        try {
+            $order->load('customer');
 
-        return redirect()->route('orders.index')->with('success', 'Pedido atualizado com sucesso!');
+            $order->customer->update([
+                'name' => $request->customer_name,
+                'phone' => $request->customer_phone,
+                'email' => $request->customer_email,
+            ]);
+
+            $itemsData = [];
+            $itemsSubtotal = 0.0;
+
+            foreach ($request->items as $item) {
+                $product = Product::findOrFail($item['product_id']);
+                $quantity = (int) $item['quantity'];
+                $unitPrice = (float) $product->price;
+                $subtotal = $quantity * $unitPrice;
+
+                $itemsData[] = [
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'subtotal' => $subtotal,
+                ];
+
+                $itemsSubtotal += $subtotal;
+            }
+
+            $deliveryFee = 0.0;
+            $addressId = null;
+
+            if ($request->type === Order::TYPE_DELIVERY) {
+                $deliveryFee = (float) $request->delivery_fee;
+                $addressData = [
+                    'customer_id' => $order->customer_id,
+                    'street' => $request->input('address.street'),
+                    'number' => $request->input('address.number'),
+                    'complement' => $request->input('address.complement'),
+                    'neighborhood' => $request->input('address.neighborhood'),
+                    'city' => 'Manaus',
+                    'state' => 'AM',
+                    'zip_code' => '',
+                    'reference' => $request->input('address.reference'),
+                    'is_primary' => true,
+                    'last_delivery_fee' => $deliveryFee,
+                    'last_delivery_fee_updated_at' => now(),
+                ];
+
+                $address = $order->address;
+
+                if ($address) {
+                    $address->update($addressData);
+                } else {
+                    $address = Address::create($addressData);
+                }
+
+                $addressId = $address->id;
+            }
+
+            $order->update([
+                'type' => $request->type,
+                'address_id' => $addressId,
+                'status' => $request->status,
+                'total_amount' => $itemsSubtotal + $deliveryFee,
+                'delivery_fee' => $deliveryFee,
+                'delivery_distance_km' => $request->type === Order::TYPE_DELIVERY ? $order->delivery_distance_km : null,
+                'payment_method' => $request->payment_method,
+                'change_for' => $request->payment_method === 'cash' && $request->filled('change_for')
+                    ? (float) $request->change_for
+                    : null,
+                'observations' => $request->observations,
+            ]);
+
+            $order->items()->delete();
+
+            foreach ($itemsData as $item) {
+                $order->items()->create($item);
+            }
+
+            DB::commit();
+
+            return redirect()->route('orders.show', $order)->with('success', 'Pedido atualizado com sucesso!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return back()->withInput()->withErrors('Erro ao atualizar pedido: ' . $e->getMessage());
+        }
     }
 
     public function accept(Order $order)
