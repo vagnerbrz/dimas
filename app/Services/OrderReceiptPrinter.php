@@ -147,13 +147,12 @@ class OrderReceiptPrinter
 
             if ($isCourierCopy) {
                 $printer->selectPrintMode(
-                    Printer::MODE_DOUBLE_WIDTH |
                     Printer::MODE_DOUBLE_HEIGHT |
                     Printer::MODE_EMPHASIZED
                 );
 
                 foreach ($this->uppercaseLines($deliveryLines) as $line) {
-                    foreach ($this->wrapText($line, 16) as $wrappedLine) {
+                    foreach ($this->wrapText($line, 32) as $wrappedLine) {
                         $printer->text($wrappedLine . "\n");
                     }
                 }
