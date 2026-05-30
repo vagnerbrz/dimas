@@ -14,6 +14,11 @@
             'product_id' => $item->product_id,
             'quantity' => $item->quantity,
         ])->values();
+    $productsPayload = $products->map(fn ($product) => [
+        'id' => $product->id,
+        'name' => $product->name,
+        'price' => (float) $product->price,
+    ])->values();
 @endphp
 
 <div class="max-w-6xl bg-white p-8 rounded-xl shadow-sm border border-gray-200 mx-auto">
@@ -182,11 +187,7 @@
 </div>
 
 <script>
-    const products = @json($products->map(fn ($product) => [
-        'id' => $product->id,
-        'name' => $product->name,
-        'price' => (float) $product->price,
-    ])->values());
+    const products = @json($productsPayload);
     const initialItems = @json($itemsPayload);
 
     let itemCount = 0;
