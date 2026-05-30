@@ -35,6 +35,19 @@
                     </div>
                 </div>
 
+                <div class="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                    <label class="text-sm font-semibold text-gray-700">Verificar pelo telefone</label>
+                    <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+                        <input type="text" id="customer_phone_lookup" value="{{ old('customer_phone', request('phone')) }}" oninput="checkCustomerPhone(this.value)" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="Digite o numero do cliente">
+                        <button type="button" onclick="checkCustomerPhone(document.getElementById('customer_phone_lookup').value)" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800">
+                            Verificar
+                        </button>
+                    </div>
+                    <div id="customer-phone-lookup-message" class="text-xs text-slate-500">
+                        Informe o numero para saber se o cliente ja esta cadastrado.
+                    </div>
+                </div>
+
                 <div id="existing-customer-panel" class="space-y-4">
                     <div class="flex flex-col gap-2">
                         <label class="text-sm font-semibold text-gray-700">Selecionar Cliente</label>
@@ -79,7 +92,7 @@
                         </div>
                         <div class="flex flex-col gap-2">
                             <label class="text-sm font-semibold text-gray-700">Telefone</label>
-                            <input type="text" name="customer_phone" id="customer_phone" value="{{ old('customer_phone', request('phone')) }}" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="(00) 00000-0000">
+                            <input type="text" name="customer_phone" id="customer_phone" value="{{ old('customer_phone', request('phone')) }}" oninput="checkCustomerPhone(this.value)" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="(00) 00000-0000">
                         </div>
                     </div>
 
@@ -266,6 +279,64 @@
         return customers.find(customer => customer.id === customerId) || null;
     }
 
+    function onlyDigits(value) {
+        return String(value || '').replace(/\D/g, '');
+    }
+
+    function findCustomerByPhone(phone) {
+        const phoneDigits = onlyDigits(phone);
+
+        if (phoneDigits.length < 8) {
+            return null;
+        }
+
+        return customers.find(customer => {
+            const customerPhoneDigits = onlyDigits(customer.phone);
+
+            return customerPhoneDigits === phoneDigits
+                || customerPhoneDigits.endsWith(phoneDigits)
+                || phoneDigits.endsWith(customerPhoneDigits);
+        }) || null;
+    }
+
+    function setLookupMessage(message, className) {
+        const messageEl = document.getElementById('customer-phone-lookup-message');
+        messageEl.innerText = message;
+        messageEl.className = className;
+    }
+
+    function checkCustomerPhone(phone) {
+        const lookupInput = document.getElementById('customer_phone_lookup');
+        const customerPhone = document.getElementById('customer_phone');
+        const phoneDigits = onlyDigits(phone);
+
+        if (lookupInput.value !== phone) {
+            lookupInput.value = phone;
+        }
+
+        if (phoneDigits.length < 8) {
+            setLookupMessage('Informe o numero para saber se o cliente ja esta cadastrado.', 'text-xs text-slate-500');
+            return;
+        }
+
+        const customer = findCustomerByPhone(phone);
+
+        if (customer) {
+            document.getElementById('customer_id').value = String(customer.id);
+            setCustomerMode('existing');
+            handleCustomerChange();
+            setLookupMessage(`Cliente ja cadastrado: ${customer.name} (${customer.phone}).`, 'text-xs font-semibold text-emerald-700');
+            return;
+        }
+
+        if (customerPhone.value !== phone) {
+            customerPhone.value = phone;
+        }
+
+        setCustomerMode('new');
+        setLookupMessage('Cliente novo. Continue preenchendo o cadastro na hora.', 'text-xs font-semibold text-amber-700');
+    }
+
     function formatMoney(value) {
         return 'R$ ' + Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
@@ -354,6 +425,12 @@
 
         const customer = selectedCustomer();
         updateCustomerSummary(customer);
+
+        if (customer) {
+            document.getElementById('customer_phone_lookup').value = customer.phone;
+            setLookupMessage(`Cliente ja cadastrado: ${customer.name} (${customer.phone}).`, 'text-xs font-semibold text-emerald-700');
+        }
+
         populateAddresses();
         toggleAddress();
     }
@@ -506,6 +583,7 @@
         addItem();
         document.getElementById('address_id').addEventListener('change', applyAddressDefaults);
         setCustomerMode(currentCustomerMode);
+        checkCustomerPhone(document.getElementById('customer_phone_lookup').value);
         toggleAddress();
         toggleChangeField();
     };

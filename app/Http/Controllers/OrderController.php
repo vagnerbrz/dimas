@@ -38,7 +38,20 @@ class OrderController extends Controller
 
         $selectedCustomer = null;
         if ($request->has('phone')) {
-            $selectedCustomer = $customers->firstWhere('phone', $request->phone);
+            $requestPhone = preg_replace('/\D+/', '', (string) $request->phone);
+            if (strlen($requestPhone) >= 8) {
+                $selectedCustomer = $customers->first(function ($customer) use ($requestPhone) {
+                    $customerPhone = preg_replace('/\D+/', '', (string) $customer->phone);
+
+                    if (strlen($customerPhone) < 8) {
+                        return false;
+                    }
+
+                    return $customerPhone === $requestPhone
+                        || str_ends_with($customerPhone, $requestPhone)
+                        || str_ends_with($requestPhone, $customerPhone);
+                });
+            }
         }
 
         return view('orders.create', compact('customers', 'products', 'selectedCustomer'));
