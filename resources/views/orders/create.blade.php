@@ -154,30 +154,23 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div class="md:col-span-2 flex flex-col gap-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex flex-col gap-2">
                                 <label class="text-sm font-semibold text-gray-700">Bairro</label>
                                 <input type="text" name="new_address[neighborhood]" id="new_address_neighborhood" value="{{ old('new_address.neighborhood') }}" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="Bairro">
                             </div>
                             <div class="flex flex-col gap-2">
-                                <label class="text-sm font-semibold text-gray-700">Cidade</label>
-                                <input type="text" name="new_address[city]" id="new_address_city" value="{{ old('new_address.city') }}" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="Cidade">
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                <label class="text-sm font-semibold text-gray-700">UF</label>
-                                <input type="text" name="new_address[state]" id="new_address_state" value="{{ old('new_address.state') }}" maxlength="2" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white uppercase" placeholder="AM">
+                                <label class="text-sm font-semibold text-gray-700">Referencia</label>
+                                <input type="text" name="new_address[reference]" value="{{ old('new_address.reference') }}" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="Opcional">
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex flex-col gap-2">
-                                <label class="text-sm font-semibold text-gray-700">CEP</label>
-                                <input type="text" name="new_address[zip_code]" id="new_address_zip_code" value="{{ old('new_address.zip_code') }}" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="00000-000">
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                <label class="text-sm font-semibold text-gray-700">Referencia</label>
-                                <input type="text" name="new_address[reference]" value="{{ old('new_address.reference') }}" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" placeholder="Perto de algum ponto conhecido">
-                            </div>
+                        <input type="hidden" name="new_address[city]" id="new_address_city" value="{{ old('new_address.city', 'Manaus') }}">
+                        <input type="hidden" name="new_address[state]" id="new_address_state" value="{{ old('new_address.state', 'AM') }}">
+                        <input type="hidden" name="new_address[zip_code]" id="new_address_zip_code" value="{{ old('new_address.zip_code') }}">
+
+                        <div class="rounded-xl border border-blue-100 bg-white/80 px-4 py-3 text-sm text-blue-800">
+                            Cidade e UF serao salvos automaticamente como Manaus/AM. CEP e referencia sao opcionais.
                         </div>
                     </div>
 
@@ -415,9 +408,6 @@
             'new_address_street',
             'new_address_number',
             'new_address_neighborhood',
-            'new_address_city',
-            'new_address_state',
-            'new_address_zip_code',
         ].map(id => document.getElementById(id));
 
         section.classList.toggle('hidden', !isDelivery);

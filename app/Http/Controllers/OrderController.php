@@ -82,15 +82,9 @@ class OrderController extends Controller
             'new_address.neighborhood' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'new'
                 ? 'required|string|max:255'
                 : 'nullable|string|max:255',
-            'new_address.city' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'new'
-                ? 'required|string|max:255'
-                : 'nullable|string|max:255',
-            'new_address.state' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'new'
-                ? 'required|string|max:2'
-                : 'nullable|string|max:2',
-            'new_address.zip_code' => $request->type === Order::TYPE_DELIVERY && $customerMode === 'new'
-                ? 'required|string|max:10'
-                : 'nullable|string|max:10',
+            'new_address.city' => 'nullable|string|max:255',
+            'new_address.state' => 'nullable|string|max:2',
+            'new_address.zip_code' => 'nullable|string|max:10',
             'new_address.reference' => 'nullable|string|max:255',
         ]);
 
@@ -138,9 +132,9 @@ class OrderController extends Controller
                         'number' => $validated['new_address']['number'],
                         'complement' => $validated['new_address']['complement'] ?? null,
                         'neighborhood' => $validated['new_address']['neighborhood'],
-                        'city' => $validated['new_address']['city'],
-                        'state' => $validated['new_address']['state'],
-                        'zip_code' => $validated['new_address']['zip_code'],
+                        'city' => 'Manaus',
+                        'state' => 'AM',
+                        'zip_code' => $validated['new_address']['zip_code'] ?? '',
                         'reference' => $validated['new_address']['reference'] ?? null,
                         'is_primary' => true,
                         'last_delivery_fee' => $deliveryFee,
