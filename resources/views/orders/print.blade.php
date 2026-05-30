@@ -149,6 +149,13 @@
             line-height: 1.4;
         }
 
+        .address-line-courier {
+            font-size: 16px;
+            line-height: 1.25;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
         .qr-block {
             margin-top: 10px;
             text-align: center;
@@ -287,9 +294,13 @@
         @if($isDelivery)
             <div class="section-title">Entrega</div>
             @forelse($addressLines as $line)
-                <div class="address-line">{{ $line }}</div>
+                <div class="address-line {{ $copyLabel === 'VIA DO ENTREGADOR' ? 'address-line-courier' : '' }}">
+                    {{ $copyLabel === 'VIA DO ENTREGADOR' ? mb_strtoupper($line) : $line }}
+                </div>
             @empty
-                <div class="address-line">Endereco nao informado.</div>
+                <div class="address-line {{ $copyLabel === 'VIA DO ENTREGADOR' ? 'address-line-courier' : '' }}">
+                    {{ $copyLabel === 'VIA DO ENTREGADOR' ? 'ENDERECO NAO INFORMADO.' : 'Endereco nao informado.' }}
+                </div>
             @endforelse
             @if($deliveryQrUrl)
                 <div class="qr-block">

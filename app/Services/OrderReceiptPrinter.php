@@ -64,6 +64,7 @@ class OrderReceiptPrinter
     {
         $isDelivery = $order->isDelivery();
         $isTable = $order->isTable();
+        $isCourierCopy = $copyLabel === 'VIA DO ENTREGADOR';
 
         $printer->initialize();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -142,8 +143,26 @@ class OrderReceiptPrinter
         $printer->setEmphasis(false);
 
         if ($isDelivery) {
-            foreach ($this->deliveryLines($order) as $line) {
-                $printer->text($line . "\n");
+            $deliveryLines = $this->deliveryLines($order);
+
+            if ($isCourierCopy) {
+                $printer->selectPrintMode(
+                    Printer::MODE_DOUBLE_WIDTH |
+                    Printer::MODE_DOUBLE_HEIGHT |
+                    Printer::MODE_EMPHASIZED
+                );
+
+                foreach ($this->uppercaseLines($deliveryLines) as $line) {
+                    foreach ($this->wrapText($line, 16) as $wrappedLine) {
+                        $printer->text($wrappedLine . "\n");
+                    }
+                }
+
+                $printer->selectPrintMode();
+            } else {
+                foreach ($deliveryLines as $line) {
+                    $printer->text($line . "\n");
+                }
             }
 
             $locationUrl = $order->deliveryLocationUrl();
@@ -326,6 +345,14 @@ class OrderReceiptPrinter
         $lines = preg_split('/\r\n|\r|\n/', $observations) ?: [];
 
         return array_values(array_filter(array_map('trim', $lines)));
+    }
+
+    protected function uppercaseLines(array $lines): array
+    {
+        return array_map(
+            fn (string $line): string => mb_strtoupper($line),
+            $lines
+        );
     }
 
     protected function wrapText(string $text, int $width): array
