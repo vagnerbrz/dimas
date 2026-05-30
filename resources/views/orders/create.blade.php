@@ -118,8 +118,8 @@
                             <option value="counter" {{ old('type') === 'counter' ? 'selected' : '' }}>Balcao (Retirada)</option>
                             <option value="table" {{ old('type') === 'table' ? 'selected' : '' }}>Mesa (Consumo no local)</option>
                         </select>
-                        <div id="table-customer-helper" class="hidden text-xs text-emerald-700 font-semibold">
-                            Pedido de mesa nao precisa de cliente. O sistema usa um cliente interno automaticamente.
+                        <div id="optional-customer-helper" class="hidden text-xs text-emerald-700 font-semibold">
+                            Este tipo de pedido nao precisa de cliente. O sistema usa um cliente interno automaticamente.
                         </div>
                     </div>
 
@@ -289,22 +289,23 @@
         return customers.find(customer => customer.id === customerId) || null;
     }
 
-    function isTableOrder() {
-        return document.getElementById('order_type').value === 'table';
+    function usesInternalCustomer() {
+        const type = document.getElementById('order_type').value;
+        return type === 'table' || type === 'counter';
     }
 
     function syncCustomerSectionForType() {
-        const tableOrder = isTableOrder();
+        const internalCustomer = usesInternalCustomer();
         const customerSection = document.getElementById('customer-section');
-        const tableHelper = document.getElementById('table-customer-helper');
+        const helper = document.getElementById('optional-customer-helper');
         const customerId = document.getElementById('customer_id');
         const customerName = document.getElementById('customer_name');
         const customerPhone = document.getElementById('customer_phone');
 
-        customerSection.classList.toggle('hidden', tableOrder);
-        tableHelper.classList.toggle('hidden', !tableOrder);
+        customerSection.classList.toggle('hidden', internalCustomer);
+        helper.classList.toggle('hidden', !internalCustomer);
 
-        if (tableOrder) {
+        if (internalCustomer) {
             customerId.required = false;
             customerName.required = false;
             customerPhone.required = false;
@@ -516,9 +517,9 @@
             ? 'rounded-lg px-4 py-2 text-sm font-semibold transition bg-slate-900 text-white'
             : 'rounded-lg px-4 py-2 text-sm font-semibold transition text-slate-700';
 
-        customerId.required = !isTableOrder() && mode === 'existing';
-        customerName.required = !isTableOrder() && mode === 'new';
-        customerPhone.required = !isTableOrder() && mode === 'new';
+        customerId.required = !usesInternalCustomer() && mode === 'existing';
+        customerName.required = !usesInternalCustomer() && mode === 'new';
+        customerPhone.required = !usesInternalCustomer() && mode === 'new';
 
         if (mode === 'existing') {
             updateCustomerSummary(selectedCustomer());

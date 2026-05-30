@@ -62,15 +62,17 @@ class OrderController extends Controller
         $customerMode = $request->input('customer_mode', 'existing');
         $addressMode = $customerMode === 'new' ? 'new' : $request->input('address_mode', 'existing');
         $isTableOrder = $request->input('type') === Order::TYPE_TABLE;
+        $isCounterOrder = $request->input('type') === Order::TYPE_COUNTER;
+        $usesInternalCustomer = $isTableOrder || $isCounterOrder;
         $shouldCreateAddress = $request->type === Order::TYPE_DELIVERY && $addressMode === 'new';
 
         $validated = $request->validate([
             'customer_mode' => ['required', Rule::in(['existing', 'new'])],
             'address_mode' => ['nullable', Rule::in(['existing', 'new'])],
-            'customer_id' => [$customerMode === 'existing' && !$isTableOrder ? 'required' : 'nullable', 'nullable', 'exists:customers,id'],
-            'customer_name' => [$customerMode === 'new' && !$isTableOrder ? 'required' : 'nullable', 'nullable', 'string', 'max:255'],
+            'customer_id' => [$customerMode === 'existing' && !$usesInternalCustomer ? 'required' : 'nullable', 'nullable', 'exists:customers,id'],
+            'customer_name' => [$customerMode === 'new' && !$usesInternalCustomer ? 'required' : 'nullable', 'nullable', 'string', 'max:255'],
             'customer_phone' => [
-                $customerMode === 'new' && !$isTableOrder ? 'required' : 'nullable',
+                $customerMode === 'new' && !$usesInternalCustomer ? 'required' : 'nullable',
                 'nullable',
                 'string',
                 'max:20',
@@ -109,6 +111,8 @@ class OrderController extends Controller
         try {
             if ($isTableOrder) {
                 $customer = $this->tableCustomer();
+            } elseif ($isCounterOrder) {
+                $customer = $this->counterCustomer();
             } elseif ($validated['customer_mode'] === 'new') {
                 $customer = Customer::create([
                     'name' => $validated['customer_name'],
@@ -409,6 +413,17 @@ class OrderController extends Controller
             ['phone' => '__MESA__'],
             [
                 'name' => 'Cliente Mesa',
+                'email' => null,
+            ]
+        );
+    }
+
+    protected function counterCustomer(): Customer
+    {
+        return Customer::firstOrCreate(
+            ['phone' => '__BALCAO__'],
+            [
+                'name' => 'Cliente Balcao',
                 'email' => null,
             ]
         );
