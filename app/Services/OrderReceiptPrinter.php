@@ -191,9 +191,11 @@ class OrderReceiptPrinter
             $printer->text("OBSERVACOES\n");
             $printer->setEmphasis(false);
 
-            foreach ($observationLines as $line) {
+            $printer->setEmphasis(true);
+            foreach ($this->uppercaseLines($observationLines) as $line) {
                 $printer->text($line . "\n");
             }
+            $printer->setEmphasis(false);
         }
 
         $printer->text(str_repeat('-', 32) . "\n");

@@ -150,8 +150,15 @@
         }
 
         .address-line-courier {
-            font-size: 16px;
+            font-size: 14px;
             line-height: 1.25;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .observation-highlight {
+            font-size: 14px;
+            line-height: 1.35;
             font-weight: 800;
             text-transform: uppercase;
         }
@@ -323,7 +330,7 @@
             <div class="divider"></div>
             <div class="section-title">Observacoes</div>
             @foreach($observationLines as $line)
-                <div class="observation-line">{{ $line }}</div>
+                <div class="observation-line observation-highlight">{{ mb_strtoupper($line) }}</div>
             @endforeach
         @endif
 
