@@ -6,6 +6,10 @@ use App\Models\LocalPrintJob;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
+/**
+ * API consumida pelo agente local (scripts/local_printer_agent.php).
+ * O agente faz conexoes de saida; o servidor nunca chama o restaurante.
+ */
 class LocalPrintJobController extends Controller
 {
     protected function authorizeRequest(Request $request): void
@@ -13,10 +17,7 @@ class LocalPrintJobController extends Controller
         $token = trim((string) $request->header('X-LOCAL-PRINT-TOKEN'));
 
         if ($token === '') {
-            $authorization = (string) $request->header('Authorization');
-            if (str_starts_with($authorization, 'Bearer ')) {
-                $token = trim(substr($authorization, 7));
-            }
+            $token = trim((string) $request->bearerToken());
         }
 
         $expected = (string) config('printing.local_api_token', '');
@@ -26,37 +27,53 @@ class LocalPrintJobController extends Controller
         }
     }
 
+    protected function recordHeartbeat(Request $request): void
+    {
+        LocalPrintJob::recordHeartbeat(
+            mb_substr((string) $request->header('X-Agent-Name', ''), 0, 100) ?: null,
+            mb_substr((string) $request->header('X-Agent-Version', ''), 0, 20) ?: null,
+        );
+    }
+
+    /**
+     * Entrega ao agente os proximos jobs, ja reservados para ele.
+     * Cada consulta tambem conta como sinal de vida do agente.
+     */
     public function index(Request $request)
     {
         $this->authorizeRequest($request);
+        $this->recordHeartbeat($request);
 
-        $jobs = LocalPrintJob::pollable()
-            ->with(['order.customer', 'order.address', 'order.items.product'])
-            ->orderBy('created_at')
-            ->limit(20)
-            ->get();
+        $agentName = mb_substr((string) $request->header('X-Agent-Name', ''), 0, 100) ?: null;
+        $jobs = LocalPrintJob::claimNext(10, $agentName);
 
-        return response()->json($jobs->map(function (LocalPrintJob $job) {
-            return [
-                'id' => $job->id,
-                'order_id' => $job->order_id,
-                'attempts' => $job->attempts,
-                'status' => $job->status,
-                'created_at' => $job->created_at?->toISOString(),
-                'order' => $job->order?->toArray(),
-            ];
-        }));
+        return response()->json($jobs->map(fn (LocalPrintJob $job) => [
+            'id' => $job->id,
+            'order_id' => $job->order_id,
+            'attempts' => $job->attempts,
+            'status' => $job->status,
+            'reason' => $job->reason,
+            'created_at' => $job->created_at?->toISOString(),
+            'order' => $job->order?->toArray(),
+        ])->values());
+    }
+
+    public function heartbeat(Request $request)
+    {
+        $this->authorizeRequest($request);
+        $this->recordHeartbeat($request);
+
+        return response()->json(['success' => true]);
     }
 
     public function complete(Request $request, LocalPrintJob $job)
     {
         $this->authorizeRequest($request);
 
-        $job->update([
-            'status' => LocalPrintJob::STATUS_PRINTED,
-            'last_attempted_at' => now(),
-            'error_message' => null,
-        ]);
+        // Confirmacao repetida (o agente reenvia se a resposta se perder) e inofensiva.
+        if ($job->status !== LocalPrintJob::STATUS_PRINTED) {
+            $job->markPrinted();
+        }
 
         return response()->json(['success' => true]);
     }
@@ -65,12 +82,9 @@ class LocalPrintJobController extends Controller
     {
         $this->authorizeRequest($request);
 
-        $job->increment('attempts');
-        $job->update([
-            'status' => LocalPrintJob::STATUS_FAILED,
-            'last_attempted_at' => now(),
-            'error_message' => trim((string) $request->input('error_message', '')), 
-        ]);
+        if ($job->status !== LocalPrintJob::STATUS_PRINTED) {
+            $job->markFailed(trim((string) $request->input('error_message', 'Erro desconhecido')));
+        }
 
         return response()->json(['success' => true]);
     }

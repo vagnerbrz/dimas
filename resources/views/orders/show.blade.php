@@ -22,6 +22,12 @@
 @endphp
 
 <div class="max-w-4xl mx-auto space-y-6">
+    @if(session('success'))
+        <div class="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">{{ session('success') }}</div>
+    @endif
+    @if($errors->any())
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">{{ $errors->first() }}</div>
+    @endif
     <div class="flex justify-between items-center">
         <a href="{{ route('orders.index') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-6-6m0 0l6-6m6 12h-12"></path></svg>
@@ -36,6 +42,13 @@
             <a href="{{ route('orders.print', $order->id) }}" target="_blank" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800">
                 Imprimir Cupom
             </a>
+
+            <form action="{{ route('orders.reprint', $order->id) }}" method="POST">
+                @csrf
+                <button type="submit" class="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm font-bold hover:bg-slate-600" title="Envia o cupom para a impressora termica do restaurante">
+                    Reimprimir na Impressora
+                </button>
+            </form>
 
             @if($order->status === 'awaiting_acceptance')
                 <form action="{{ route('orders.accept', $order->id) }}" method="POST">

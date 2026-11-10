@@ -414,6 +414,13 @@ class OrderController extends Controller
         return redirect()->route('orders.show', $order)->with('success', 'Pedido aceito e enviado para a fila de preparo.');
     }
 
+    public function reprint(Order $order)
+    {
+        PrintOrderReceipt::dispatch($order->id, reprint: true);
+
+        return redirect()->route('orders.show', $order)->with('success', 'Cupom enviado para a impressora.');
+    }
+
     public function destroy(Order $order)
     {
         $order->delete();

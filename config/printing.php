@@ -6,6 +6,10 @@ return [
     'local_api_token' => env('LOCAL_PRINT_API_TOKEN', ''),
     'local_max_attempts' => env('LOCAL_PRINT_MAX_ATTEMPTS', 10),
     'local_retry_after_seconds' => env('LOCAL_PRINT_RETRY_AFTER_SECONDS', 30),
+    // Job reservado por um agente que nao confirmou nesse tempo volta para a fila.
+    'local_claim_timeout_seconds' => env('LOCAL_PRINT_CLAIM_TIMEOUT_SECONDS', 120),
+    // Sem contato do agente por esse tempo, o painel mostra a impressora offline.
+    'local_offline_after_seconds' => env('LOCAL_PRINT_OFFLINE_AFTER_SECONDS', 60),
 
     'defaults' => [
         'print_enabled' => env('PRINT_ENABLED', 'false'),

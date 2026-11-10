@@ -13,6 +13,7 @@ Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook'])
 
 Route::prefix('local-printer')->group(function () {
     Route::get('/jobs', [LocalPrintJobController::class, 'index']);
+    Route::post('/heartbeat', [LocalPrintJobController::class, 'heartbeat']);
     Route::post('/jobs/{job}/complete', [LocalPrintJobController::class, 'complete']);
     Route::post('/jobs/{job}/fail', [LocalPrintJobController::class, 'fail']);
 });

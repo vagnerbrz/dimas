@@ -38,6 +38,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('orders', OrderController::class);
     Route::get('orders/{order}/print', [OrderController::class, 'print'])->name('orders.print');
     Route::post('orders/{order}/accept', [OrderController::class, 'accept'])->name('orders.accept');
+    Route::post('orders/{order}/reprint', [OrderController::class, 'reprint'])->name('orders.reprint');
+    Route::view('printing', 'printing.index')->name('printing.index');
     Route::resource('customers', CustomerController::class);
     Route::get('human-conversations', [HumanConversationController::class, 'index'])->name('human-conversations.index');
     Route::get('human-conversations/{humanConversation}', [HumanConversationController::class, 'show'])->name('human-conversations.show');

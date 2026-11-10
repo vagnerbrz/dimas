@@ -33,6 +33,9 @@
                 <a href="{{ route('whatsapp.settings') }}" class="block p-3 rounded-lg transition {{ request()->routeIs('whatsapp.settings') ? 'bg-blue-600' : 'hover:bg-slate-800' }}">
                     Autenticador WhatsApp
                 </a>
+                <a href="{{ route('printing.index') }}" class="block p-3 rounded-lg transition {{ request()->routeIs('printing.*') ? 'bg-blue-600' : 'hover:bg-slate-800' }}">
+                    🖨️ Impressao
+                </a>
                 <a href="{{ route('reports.sales') }}" class="block p-3 rounded-lg transition {{ request()->routeIs('reports.sales') ? 'bg-blue-600' : 'hover:bg-slate-800' }}">
                     Relatorio de Vendas
                 </a>
@@ -56,6 +59,7 @@
             <header class="bg-white shadow-sm p-4 flex justify-between items-center">
                 <h1 class="text-xl font-semibold text-gray-800">@yield('header')</h1>
                 <div class="flex items-center gap-4">
+                    @livewire('printer-status-badge')
                     <span class="text-sm text-gray-500">Olá, Administrador</span>
                     <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">A</div>
                 </div>

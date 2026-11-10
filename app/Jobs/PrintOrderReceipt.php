@@ -16,7 +16,10 @@ class PrintOrderReceipt implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $orderId)
+    /**
+     * @param bool $reprint Reimpressao pedida manualmente no painel.
+     */
+    public function __construct(public int $orderId, public bool $reprint = false)
     {
     }
 
@@ -35,22 +38,37 @@ class PrintOrderReceipt implements ShouldQueue
         try {
             $printConfig = $printer->configuration();
 
-            Log::info('Iniciando job de impressao automatica.', [
+            Log::info('Iniciando job de impressao.', [
                 'order_id' => $order->id,
+                'reprint' => $this->reprint,
                 'print_connection' => $printConfig['print_connection'] ?? null,
                 'print_enabled' => $printConfig['print_enabled'] ?? null,
             ]);
 
             if ($printer->isLocalConnection()) {
-                LocalPrintJob::createIfNotExists($order->id);
+                // Impressao automatica desligada nao bloqueia reimpressao manual.
+                if (!$this->reprint && !$printer->isEnabled()) {
+                    Log::info('Impressao automatica desativada. Pedido nao enviado para a fila local.', [
+                        'order_id' => $order->id,
+                    ]);
+
+                    return;
+                }
+
+                $job = $this->reprint
+                    ? LocalPrintJob::enqueueReprint($order->id)
+                    : LocalPrintJob::createIfNotExists($order->id);
+
                 Log::info('Pedido adicionado a fila de impressao local.', [
                     'order_id' => $order->id,
+                    'local_print_job_id' => $job->id,
                 ]);
+
                 return;
             }
 
             $printer->print($order);
-            Log::info('Job de impressao automatica concluido.', [
+            Log::info('Job de impressao concluido.', [
                 'order_id' => $order->id,
             ]);
         } catch (\Throwable $e) {

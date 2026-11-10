@@ -399,7 +399,7 @@ class OrderReceiptPrinter
         };
     }
 
-    protected function isEnabled(): bool
+    public function isEnabled(): bool
     {
         return filter_var($this->setting('print_enabled', 'false'), FILTER_VALIDATE_BOOL);
     }
