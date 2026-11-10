@@ -38,15 +38,21 @@ $app->make(Kernel::class)->bootstrap();
 // No restaurante a impressora vem sempre do .env local, nunca do banco.
 config(['printing.prefer_env' => true]);
 
-$apiUrl = $argv[1] ?? env('LOCAL_PRINT_API_URL');
-$apiToken = $argv[2] ?? env('LOCAL_PRINT_API_TOKEN');
-$interval = max(1, (int) ($argv[3] ?? env('LOCAL_PRINT_POLL_INTERVAL', 5)));
-$localPrintConnection = (string) env('PRINT_CONNECTION', 'network');
-$agentName = (string) (env('LOCAL_PRINT_AGENT_NAME') ?: gethostname() ?: 'agente-local');
+// Le pela config (e nao env() direto) para funcionar tambem com config:cache.
+$apiUrl = $argv[1] ?? config('printing.local_api_url');
+$apiToken = $argv[2] ?? config('printing.local_api_token');
+$interval = max(1, (int) ($argv[3] ?? config('printing.local_poll_interval', 5)));
+$localPrintConnection = (string) config('printing.defaults.print_connection', 'network');
+$agentName = (string) (config('printing.local_agent_name') ?: gethostname() ?: 'agente-local');
 
 if (!$apiUrl || !$apiToken) {
     fwrite(STDERR, "Uso: php scripts/local_printer_agent.php <REMOTE_API_URL> <API_TOKEN> [POLL_INTERVAL_SECONDS]\n");
-    fwrite(STDERR, "Ou defina LOCAL_PRINT_API_URL e LOCAL_PRINT_API_TOKEN no .env local.\n");
+    fwrite(STDERR, "Ou defina LOCAL_PRINT_API_URL e LOCAL_PRINT_API_TOKEN no .env desta maquina: {$basePath}" . DIRECTORY_SEPARATOR . ".env\n");
+    fwrite(STDERR, '  LOCAL_PRINT_API_URL:   ' . ($apiUrl ? 'ok' : 'FALTANDO') . "\n");
+    fwrite(STDERR, '  LOCAL_PRINT_API_TOKEN: ' . ($apiToken ? 'ok' : 'FALTANDO') . "\n");
+    if ($app->configurationIsCached()) {
+        fwrite(STDERR, "A configuracao do Laravel esta em cache. Depois de editar o .env rode: php artisan config:clear\n");
+    }
     exit(1);
 }
 

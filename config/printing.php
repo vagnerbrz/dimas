@@ -4,6 +4,10 @@ return [
     'prefer_env' => env('PRINT_PREFER_ENV', false),
 
     'local_api_token' => env('LOCAL_PRINT_API_TOKEN', ''),
+    // Usados pelo agente na maquina do restaurante.
+    'local_api_url' => env('LOCAL_PRINT_API_URL'),
+    'local_poll_interval' => env('LOCAL_PRINT_POLL_INTERVAL', 5),
+    'local_agent_name' => env('LOCAL_PRINT_AGENT_NAME'),
     'local_max_attempts' => env('LOCAL_PRINT_MAX_ATTEMPTS', 10),
     'local_retry_after_seconds' => env('LOCAL_PRINT_RETRY_AFTER_SECONDS', 30),
     // Job reservado por um agente que nao confirmou nesse tempo volta para a fila.
